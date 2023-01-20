@@ -13,7 +13,8 @@ Optionally delete the downloaded files (and keep only the extracted data) with
 $ rm data/*.tgz data/*.tar
 ```
 
-After the operation the `data` dir should look like this
+After the operation, the `data` dir should look like this (you can check it
+with `tree data`):
 ```
 data
 ├── dev

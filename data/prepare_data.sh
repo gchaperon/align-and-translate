@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo "========== Downloading all files =========="  
+echo "========== Downloading all files =========="
 wget -i files.txt -nc
 
 # extract test and dev files, they end up in the right dir hierarchy

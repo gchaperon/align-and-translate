@@ -3,5 +3,6 @@
 /data/train
 /data/dev
 /data/test
+/data-fast-read
 
 /tags

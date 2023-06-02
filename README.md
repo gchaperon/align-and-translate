@@ -2,7 +2,7 @@
 My replication code for the paper [Neural Machine Translation by Jointly Learning to Align and Translate](https://arxiv.org/abs/1409.0473).
 
 
-## The data
+## [deprecated] The data
 Download and prepare the data by running
 ```console
 $ cd data && bash prepare_data.sh && cd ..
@@ -41,3 +41,14 @@ data
     └── un
         ...
 ```
+
+## The data
+Requires commands `wget` and `tar` and `pv`.
+
+
+## Changes
+This section sumarizes the difference between my implementation and the one described in the paper.
+
+* Train dataset size reduction, from 850M words to 348M words. I didn't do this
+  step because I considered it too difficult, and also because the objective of
+  this repo is to replicate the architecture.

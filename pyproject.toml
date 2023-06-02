@@ -7,7 +7,10 @@ name = "align-and-translate"
 version = "0.1.0"
 
 [project.optional-dependencies]
-dev = ["ipython"]
+dev = ["ipython", "pre-commit", "align-and-translate[pre-commit]"]
+# pre-commit requirements should be syncd with the versions in
+# .pre-commit-config.yaml
+pre-commit = ["black==23.3.0", "isort==5.12.0", "ruff==0.0.270"]
 
 
 [tool.isort]

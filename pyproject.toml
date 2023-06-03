@@ -5,8 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "align-and-translate"
 version = "0.1.0"
+dependencies = ["torch", "pytorch-lightning~=2.0"]
 
 [project.optional-dependencies]
+all = ["align-and-translate[train,dev]"]
+train = ["dvc", "datasets"]
 dev = ["ipython", "pre-commit", "align-and-translate[types,pre-commit]"]
 types = ["mypy"]
 # pre-commit requirements should be syncd with the versions in

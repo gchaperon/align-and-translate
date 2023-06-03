@@ -1,0 +1,5 @@
+[core]
+    autostage = true
+    remote = http
+['remote "http"']
+    url = https://users.dcc.uchile.cl/~gchapero/datasets/align_and_translate/

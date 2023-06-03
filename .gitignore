@@ -3,10 +3,13 @@
 /data/train
 /data/dev
 /data/test
-/data-fast-read
 
 /tags
 
 __pycache__
 *.egg-info/
 build/
+
+.tox/
+
+.vimrc

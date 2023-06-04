@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(
     ),
 )
 parser.add_argument(
-    "--vocab-size", help="Vocabulary size of the resulting tokenizers", default=60_000
+    "--vocab-size", help="Vocabulary size of the resulting tokenizer.", default=60_000
 )
 
 

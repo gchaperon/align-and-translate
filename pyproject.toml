@@ -11,6 +11,7 @@ version = "0.1.0"
 all = ["align-and-translate[train,dev]"]
 train = ["dvc[ssh]", "datasets", "sentencepiece"]
 dev = ["ipython", "pre-commit", "align-and-translate[types,pre-commit]"]
+test = ["pytest>=6", "align-and-translate[train]"]
 types = ["mypy"]
 # pre-commit requirements should be syncd with the versions in
 # .pre-commit-config.yaml

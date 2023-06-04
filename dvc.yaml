@@ -1,0 +1,8 @@
+stages:
+  build-tokenizer:
+    cmd: python scripts/train_tokenizer.py
+    deps:
+    - data/hf-datasets/wmt14
+    - scripts/train_tokenizer.py
+    outs:
+    - data/tokenizer

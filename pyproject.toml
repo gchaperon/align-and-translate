@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "align-and-translate"
 version = "0.1.0"
-dependencies = ["torch", "pytorch-lightning~=2.0"]
+# dependencies = ["torch", "pytorch-lightning~=2.0"]
 
 [project.optional-dependencies]
 all = ["align-and-translate[train,dev]"]
-train = ["dvc[ssh]", "datasets"]
+train = ["dvc[ssh]", "datasets", "sentencepiece"]
 dev = ["ipython", "pre-commit", "align-and-translate[types,pre-commit]"]
 types = ["mypy"]
 # pre-commit requirements should be syncd with the versions in
@@ -26,6 +26,10 @@ target-version = ["py310"]
 
 [tool.ruff]
 line-length = 88
+select = ["D", "E", "F", "T10"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
 
 [tool.mypy]
 # start with strict and explicitly relax some conditions

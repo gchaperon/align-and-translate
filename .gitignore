@@ -1,15 +1,17 @@
+# env stuff
 /env/
 
-/data/train
-/data/dev
-/data/test
-
-/tags
-
+# python distribution
 __pycache__
 *.egg-info/
 build/
 
+# test stuff
 .tox/
 
+# editor stuff
 .vimrc
+/tags
+
+# data stuff
+/data/**/*.lock

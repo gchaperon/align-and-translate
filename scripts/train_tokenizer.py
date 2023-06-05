@@ -9,7 +9,9 @@ import sentencepiece as spm
 from datasets import load_dataset
 
 OUTPUT_DIR = "data/tokenizer"
-MAX_SENTENCES = 1_000_000
+# NOTE: this is chosen because is the max number that makes the algorithm fit
+# in the 32gb + 32gb(swap) of memory that I have (i'm poor).
+MAX_SENTENCES = 8_000_000
 
 parser = argparse.ArgumentParser(
     prog="train_tokenizer",

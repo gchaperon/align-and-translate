@@ -1,4 +1,4 @@
-name: types
+name: Static Types
 on:
   push:
     branches:
@@ -15,7 +15,7 @@ on:
     - cron: 0 8 * * SAT
 
 jobs:
-  lint:
+  mypy:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:

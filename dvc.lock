@@ -8,10 +8,10 @@ stages:
       size: 15098090914
       nfiles: 36
     - path: scripts/train_tokenizer.py
-      md5: 359f70a34419410129a85aed82c688aa
-      size: 2402
+      md5: 57eb4f5df01695bc0ccccf13eb76490d
+      size: 3193
     outs:
     - path: data/tokenizer
-      md5: 8d24d09dc3fd027eb7621224e4c5074c.dir
-      size: 1342354
-      nfiles: 1
+      md5: 1777251e74bbd4e6999fb9799a30f968.dir
+      size: 3125460
+      nfiles: 2

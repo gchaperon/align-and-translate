@@ -1,0 +1,17 @@
+schema: '2.0'
+stages:
+  build-tokenizer:
+    cmd: python scripts/train_tokenizer.py
+    deps:
+    - path: data/hf-datasets/wmt14
+      md5: 314a5483a3ffa3d3596aa8ca765639ee.dir
+      size: 15098090914
+      nfiles: 36
+    - path: scripts/train_tokenizer.py
+      md5: 359f70a34419410129a85aed82c688aa
+      size: 2402
+    outs:
+    - path: data/tokenizer
+      md5: 8d24d09dc3fd027eb7621224e4c5074c.dir
+      size: 1342354
+      nfiles: 1

@@ -32,6 +32,9 @@ select = ["D", "E", "F", "T10"]
 [tool.ruff.pydocstyle]
 convention = "google"
 
+[tool.ruff.per-file-ignores]
+"stubs/**/*" = ["D101", "D103", "D105"]
+
 [tool.mypy]
 # start with strict and explicitly relax some conditions
 # reasoning for each should be clearly documented

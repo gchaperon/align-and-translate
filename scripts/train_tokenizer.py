@@ -40,9 +40,31 @@ def train_tokenizer(
     """
     buffer = io.BytesIO()
     spm.SentencePieceTrainer.train(
-        sentence_iterator=iter(sentences), model_writer=buffer, vocab_size=vocab_size
+        sentence_iterator=iter(sentences),
+        model_writer=buffer,
+        vocab_size=vocab_size,
+        character_coverage=1.0,
+        pad_id=3,
     )
+    buffer.seek(0)
     return buffer
+
+
+def get_vocab(model: spm.SentencePieceProcessor) -> dict[str, float]:
+    """Get vocab from a trained model.
+
+    See here for reference https://github.com/google/sentencepiece/issues/668
+
+    Args:
+        model: A trained sentencepiece model.
+
+    Returns:
+        A dict mapping the vocabulary of the model to the score of the token.
+    """
+    return {
+        model.id_to_piece(id): model.get_score(id)
+        for id in range(model.get_piece_size())
+    }
 
 
 def main(vocab_size: int) -> None:
@@ -73,8 +95,14 @@ def main(vocab_size: int) -> None:
     output_path.mkdir(exist_ok=True)
     with open(output_path / "tokenizer.model", "wb") as of:
         print("Saving to", of.name)
-        model.seek(0)
         shutil.copyfileobj(model, of)
+
+    vocab = get_vocab(
+        spm.SentencePieceProcessor(model_file=str(output_path / "tokenizer.model"))
+    )
+    with open(output_path / "tokenizer.vocab", "w") as of:
+        for key, value in vocab.items():
+            of.write(f"{key}\t{value}\n")
 
 
 if __name__ == "__main__":

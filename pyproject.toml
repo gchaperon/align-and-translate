@@ -35,6 +35,7 @@ convention = "google"
 
 [tool.ruff.per-file-ignores]
 "stubs/**/*" = ["D101", "D102", "D103", "D105", "D107"]
+"test/**/*" = ["D"]
 
 [tool.mypy]
 # start with strict and explicitly relax some conditions

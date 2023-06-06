@@ -40,7 +40,7 @@ def train_tokenizer(
     """
     buffer = io.BytesIO()
     spm.SentencePieceTrainer.train(
-        sentence_iterator=sentences, model_writer=buffer, vocab_size=vocab_size
+        sentence_iterator=iter(sentences), model_writer=buffer, vocab_size=vocab_size
     )
     return buffer
 

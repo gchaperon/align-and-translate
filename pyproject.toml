@@ -5,14 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "align-and-translate"
 version = "0.1.0"
-# dependencies = ["torch", "pytorch-lightning~=2.0"]
+dependencies = ["torch", "pytorch-lightning~=2.0"]
 
 [project.optional-dependencies]
 all = ["align-and-translate[train,dev]"]
 train = ["dvc[ssh]", "datasets", "sentencepiece"]
 dev = ["ipython", "pre-commit", "align-and-translate[types,pre-commit]"]
 test = ["pytest>=6", "align-and-translate[train]"]
-types = ["mypy"]
+types = ["mypy", "types-colorama", "types-decorator", "types-docutils", "types-openpyxl", "types-Pillow",
+	 "types-psutil", "types-Pygments", "types-pytz", "types-pywin32", "types-PyYAML", "types-regex",
+	 "types-setuptools", "types-six", "types-tabulate", "types-tqdm", "types-typed-ast", "lxml-stubs",
+	 "pandas-stubs"]
 # pre-commit requirements should be syncd with the versions in
 # .pre-commit-config.yaml
 pre-commit = ["black==23.3.0", "isort==5.12.0", "ruff==0.0.270"]

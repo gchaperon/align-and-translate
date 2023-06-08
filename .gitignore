@@ -15,3 +15,7 @@ build/
 
 # data stuff
 /data/**/*.lock
+
+# coverage.py
+.coverage
+/htmlcov/

@@ -19,8 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
       - name: Pre-commit cache
@@ -28,5 +30,7 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-3|${{ runner.os }}|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
-      - run: pip install pre-commit -c requirements/dev.txt
-      - run: pre-commit run --show-diff-on-failure --color=always --all-files
+      - name: Installl pre-commit
+        run: pip install pre-commit -c requirements/all.txt
+      - name: Run pre-commit
+        run: pre-commit run --show-diff-on-failure --color=always --files

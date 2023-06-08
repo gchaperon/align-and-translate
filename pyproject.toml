@@ -10,8 +10,8 @@ dependencies = ["torch", "pytorch-lightning~=2.0"]
 [project.optional-dependencies]
 all = ["align-and-translate[train,dev]"]
 train = ["dvc[ssh]", "datasets", "sentencepiece"]
-dev = ["ipython", "pre-commit", "align-and-translate[types,pre-commit]"]
-test = ["pytest>=6", "align-and-translate[train]"]
+dev = ["ipython", "pre-commit", "align-and-translate[test,types,pre-commit]"]
+test = ["pytest>=6", "coverage", "align-and-translate[train]"]
 types = ["mypy", "types-colorama", "types-decorator", "types-docutils", "types-openpyxl", "types-Pillow",
 	 "types-psutil", "types-Pygments", "types-pytz", "types-pywin32", "types-PyYAML", "types-regex",
 	 "types-setuptools", "types-six", "types-tabulate", "types-tqdm", "types-typed-ast", "lxml-stubs",

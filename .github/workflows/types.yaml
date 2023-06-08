@@ -3,6 +3,12 @@ on:
   push:
     branches:
       - master
+    paths:
+      - "**.py"
+      - "**.pyi"
+      - "pyproject.toml"
+      - "tox.ini"
+      - "requirements/**"
   pull_request:
     branches:
       - master
@@ -11,6 +17,12 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    paths:
+      - "**.py"
+      - "**.pyi"
+      - "pyproject.toml"
+      - "tox.ini"
+      - "requirements/**"
   schedule:
     - cron: 0 8 * * SAT
 
@@ -19,11 +31,25 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           cache: pip
           cache-dependency-path: pyproject.toml
-      - run: pip install tox
-      - run: tox run -e types
+      - name: Mypy cache
+        uses: actions/cache@v3
+        with:
+          path: .mypy_cache
+          key: mypy|${{ runner.os }}|${{ env.pythonLocation }}
+      - name: Tox types env cache
+        uses: actions/cache@v3
+        with:
+          path: .tox/types
+          key: tox|${{ runner.os }}|${{ env.pythonLocation }}|${{ hashFiles('tox.ini') }}
+      - name: Install tox
+        run: pip install tox
+      - name: Run mypy
+        run: tox run -e types

@@ -33,4 +33,4 @@ jobs:
       - name: Installl pre-commit
         run: pip install pre-commit -c requirements/all.txt
       - name: Run pre-commit
-        run: pre-commit run --show-diff-on-failure --color=always --files
+        run: pre-commit run --show-diff-on-failure --color=always --all-files

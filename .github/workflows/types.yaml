@@ -4,11 +4,11 @@ on:
     branches:
       - master
     paths:
-      - "**.py"
-      - "**.pyi"
-      - "pyproject.toml"
-      - "tox.ini"
-      - "requirements/**"
+      - '**.py'
+      - '**.pyi'
+      - pyproject.toml
+      - tox.ini
+      - requirements/**
   pull_request:
     branches:
       - master
@@ -18,11 +18,11 @@ on:
       - reopened
       - ready_for_review
     paths:
-      - "**.py"
-      - "**.pyi"
-      - "pyproject.toml"
-      - "tox.ini"
-      - "requirements/**"
+      - '**.py'
+      - '**.pyi'
+      - pyproject.toml
+      - tox.ini
+      - requirements/**
   schedule:
     - cron: 0 8 * * SAT
 

@@ -11,11 +11,15 @@ dependencies = ["torch", "pytorch-lightning~=2.0"]
 all = ["align-and-translate[train,dev]"]
 train = ["dvc[ssh]", "datasets", "sentencepiece"]
 dev = ["ipython", "pre-commit", "align-and-translate[test,types,pre-commit]"]
-test = ["pytest>=6", "coverage", "align-and-translate[train]"]
-types = ["mypy", "types-colorama", "types-decorator", "types-docutils", "types-openpyxl", "types-Pillow",
-	 "types-psutil", "types-Pygments", "types-pytz", "types-pywin32", "types-PyYAML", "types-regex",
-	 "types-setuptools", "types-six", "types-tabulate", "types-tqdm", "types-typed-ast", "lxml-stubs",
-	 "pandas-stubs"]
+test = ["pytest>=6", "coverage", "hypothesis", "align-and-translate[train]"]
+types = [
+    "mypy", "align-and-translate[test]", "types-colorama",
+    "types-decorator", "types-docutils", "types-openpyxl", "types-Pillow",
+    "types-psutil", "types-Pygments", "types-pytz", "types-pywin32",
+    "types-PyYAML", "types-regex", "types-setuptools", "types-six",
+    "types-tabulate", "types-tqdm", "types-typed-ast", "lxml-stubs",
+    "pandas-stubs"
+]
 # pre-commit requirements should be syncd with the versions in
 # .pre-commit-config.yaml
 pre-commit = ["black==23.3.0", "isort==5.12.0", "ruff==0.0.270"]
@@ -38,7 +42,7 @@ convention = "google"
 
 [tool.ruff.per-file-ignores]
 "stubs/**/*" = ["D101", "D102", "D103", "D105", "D107"]
-"test/**/*" = ["D"]
+"tests/**/*" = ["D"]
 
 [tool.mypy]
 # start with strict and explicitly relax some conditions

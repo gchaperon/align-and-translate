@@ -1,3 +1,5 @@
+import typing as tp
+
 import pytest
 import torch
 import torch.nn.utils.rnn as rnnutils
@@ -43,7 +45,6 @@ def test_alignment(
     hidden_size: int,
     batch_size: int,
 ) -> None:
-
     box: dict[str, torch.Tensor] = {}
     model = nn.Alignment(encoder_size, decoder_size, hidden_size)
     model.softmax.register_forward_hook(
@@ -83,7 +84,9 @@ def test_rnnsearch_model_init(
 
 
 @st.composite
-def sentence_batches(draw: st.DrawFn) -> tuple[list[list[int]], list[list[int]], int]:
+def sentence_batches(
+    draw: st.DrawFn,
+) -> tp.Tuple[tp.List[tp.List[int]], tp.List[tp.List[int]], int]:
     vocab_size = draw(st.integers(1, 100))
     # NOTE: RNNs don't handle 0-length inputs
     sentences = st.lists(st.integers(0, vocab_size - 1), min_size=1, max_size=100)
@@ -98,7 +101,7 @@ def sentence_batches(draw: st.DrawFn) -> tuple[list[list[int]], list[list[int]],
 @given(sentence_batches(), *(st.integers(min_value=1, max_value=20) for _ in range(4)))
 @torch.no_grad()
 def test_rnnsearch_forward(
-    batch_and_vsize: tuple[list[list[int]], list[list[int]], int],
+    batch_and_vsize: tp.Tuple[tp.List[tp.List[int]], tp.List[tp.List[int]], int],
     embedding_dim: int,
     hidden_size: int,
     output_dim: int,

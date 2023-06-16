@@ -95,8 +95,8 @@ class Alignment(nn.Module):
 
     @staticmethod
     def attention_mask(
-        lens: torch.Tensor, max_len: int | torch.Tensor | None = None
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        lens: torch.Tensor, max_len: tp.Union[int, torch.Tensor, None] = None
+    ) -> tp.Tuple[torch.Tensor, torch.Tensor]:
         """Compute attention mask for a 2D tensor using the sequence lenghts.
 
         Assumes dimensions (L, B), where L is sequence length (padded) and B is

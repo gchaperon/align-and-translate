@@ -1,6 +1,5 @@
 import typing as tp
 
-import pytest
 import torch
 import torch.nn.utils.rnn as rnnutils
 from hypothesis import given, settings
@@ -29,6 +28,13 @@ def test_bridge(
     assert torch.all(output >= -1) and torch.all(output <= 1)
 
 
+def sequence_batch(vector_size: int, lengths: tp.List[int]) -> rnnutils.PackedSequence:
+    return rnnutils.pack_sequence(
+        [torch.rand(length, vector_size) for length in lengths],
+        enforce_sorted=False,
+    )
+
+
 @settings(max_examples=20)
 @given(
     st.data(),
@@ -50,14 +56,11 @@ def test_alignment(
     model.softmax.register_forward_hook(
         lambda _, __, output: box.setdefault("value", output)
     )
-    encoder_output = rnnutils.pack_sequence(
-        [
-            torch.rand(length, encoder_size)
-            for length in data.draw(
-                st.lists(st.integers(1, 20), min_size=batch_size, max_size=batch_size)
-            )
-        ],
-        enforce_sorted=False,
+    encoder_output = sequence_batch(
+        vector_size=encoder_size,
+        lengths=data.draw(
+            st.lists(st.integers(1, 20), min_size=batch_size, max_size=batch_size)
+        ),
     )
     last_decoder_hidden = torch.rand(batch_size, decoder_size)
     context = model(encoder_output, last_decoder_hidden)
@@ -71,53 +74,86 @@ def test_alignment(
 
 
 @settings(max_examples=20)
-@given(*(st.integers(min_value=1, max_value=20) for _ in range(5)))
+@given(
+    st.data(),
+    st.integers(1, 20),
+    st.integers(1, 20),
+    st.integers(1, 20),
+    st.integers(1, 20),
+    st.integers(1, 8),
+)
 @torch.no_grad()
-def test_rnnsearch_model_init(
+def test_attention_decoder(
+    data: st.DataObject,
+    input_size: int,
+    hidden_size: int,
+    encoder_hidden_size: int,
+    alignment_dim: int,
+    batch_size: int,
+) -> None:
+    model = nn.AttentionDecoder(
+        input_size, hidden_size, encoder_hidden_size, alignment_dim
+    )
+    lengths = st.lists(st.integers(1, 20), min_size=batch_size, max_size=batch_size)
+    encoder_output = sequence_batch(
+        vector_size=encoder_hidden_size, lengths=data.draw(lengths)
+    )
+    decoder_input = sequence_batch(vector_size=input_size, lengths=data.draw(lengths))
+    h0 = torch.rand(batch_size, hidden_size)
+
+    output = model(encoder_output, decoder_input, h0)
+
+    assert isinstance(output, rnnutils.PackedSequence)
+    assert output.batch_sizes[0] == batch_size
+
+    output_padded, output_lens = rnnutils.pad_packed_sequence(output)
+    input_padded, input_lens = rnnutils.pad_packed_sequence(decoder_input)
+
+    assert (
+        output_padded.shape[:2] == input_padded.shape[:2]
+    ), "max sequence length and batch size should batch"
+    assert torch.all(output_lens == input_lens)
+
+
+@settings(max_examples=20)
+@given(
+    st.data(),
+    *(st.integers(min_value=1, max_value=20) for _ in range(5)),
+    st.integers(1, 8),
+)
+@torch.no_grad()
+def test_rnnsearch_model(
+    data: st.DataObject,
     vocab_size: int,
     embedding_dim: int,
     hidden_size: int,
     output_dim: int,
     alignment_dim: int,
+    batch_size: int,
 ) -> None:
-    nn.RNNSearch(vocab_size, embedding_dim, hidden_size, output_dim, alignment_dim)
-
-
-@st.composite
-def sentence_batches(
-    draw: st.DrawFn,
-) -> tp.Tuple[tp.List[tp.List[int]], tp.List[tp.List[int]], int]:
-    vocab_size = draw(st.integers(1, 100))
-    # NOTE: RNNs don't handle 0-length inputs
-    sentences = st.lists(st.integers(0, vocab_size - 1), min_size=1, max_size=100)
-    batch = draw(st.lists(sentences, min_size=1, max_size=8))
-    batch_size = len(batch)
-    target = [draw(sentences) for _ in range(batch_size)]
-    return batch, target, vocab_size
-
-
-@pytest.mark.xfail()
-@settings(max_examples=20)
-@given(sentence_batches(), *(st.integers(min_value=1, max_value=20) for _ in range(4)))
-@torch.no_grad()
-def test_rnnsearch_forward(
-    batch_and_vsize: tp.Tuple[tp.List[tp.List[int]], tp.List[tp.List[int]], int],
-    embedding_dim: int,
-    hidden_size: int,
-    output_dim: int,
-    alignment_dim: int,
-) -> None:
-    input_batch, decoder_batch, vocab_size = batch_and_vsize
     model = nn.RNNSearch(
         vocab_size, embedding_dim, hidden_size, output_dim, alignment_dim
     )
+    lengths = st.lists(st.integers(1, 20), min_size=batch_size, max_size=batch_size)
     input = rnnutils.pack_sequence(
-        [torch.tensor(s) for s in input_batch], enforce_sorted=False
+        [
+            torch.randint(low=0, high=vocab_size, size=(length,))
+            for length in data.draw(lengths)
+        ],
+        enforce_sorted=False,
     )
-    decoder_input = rnnutils.pack_sequence(
-        [torch.tensor(s) for s in decoder_batch], enforce_sorted=False
+    teacher_forcing = rnnutils.pack_sequence(
+        [
+            torch.randint(low=0, high=vocab_size, size=(length,))
+            for length in data.draw(lengths)
+        ],
+        enforce_sorted=False,
     )
+    output = model(input, teacher_forcing)
 
-    output = model(input, decoder_input)
     assert isinstance(output, rnnutils.PackedSequence)
-    assert len(input_batch) == output.batch_sizes[0]
+
+    output_padded, lens = rnnutils.pad_packed_sequence(output)
+    assert output_padded.shape[1] == batch_size
+    assert output_padded.shape[2] == output_dim
+    assert torch.all(lens == rnnutils.pad_packed_sequence(teacher_forcing)[1])

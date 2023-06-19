@@ -1,6 +1,4 @@
 """RNNsearch model definition."""
-import functools
-import itertools
 import typing as tp
 
 import pytorch_lightning as pl
@@ -172,7 +170,79 @@ class Alignment(nn.Module):
         context = torch.sum(scores_padded[..., None] * encoder_padded, dim=0)
         return context
 
-# import torch
+
+class AttentionDecoder(nn.Module):
+    """Decoder using the attention mechanism.
+
+    At each step of the decoding process, the model computes an alignment
+    scores w/r to the encoder  hidden states, and uses them to compute a new
+    context vector.
+    """
+
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        encoder_hidden_size: int,
+        alignment_dim: int,
+    ) -> None:
+        """Create a new AttentionDecoder module.
+
+        Args:
+            input_size: The embedding dimension of each vector in the input.
+                E*y_i in section A.2.2 of the paper.
+            hidden_size: The hidden size of the network. Dimension of the s_i vectors.
+            encoder_hidden_size: The encoder hidden size. Dimesion of the h_j vectors.
+            alignment_dim: The hidden size of the alignment model. Dimension n'
+                in the alignment model.
+        """
+        super().__init__()
+        self.alignment = Alignment(
+            encoder_size=encoder_hidden_size,
+            decoder_size=hidden_size,
+            hidden_size=alignment_dim,
+        )
+        self.decoder_cell = nn.GRUCell(
+            input_size=input_size + encoder_hidden_size, hidden_size=hidden_size
+        )
+        self.activation = nn.Tanh()
+
+    def forward(
+        self,
+        encoder_output: rnnutils.PackedSequence,
+        decoder_input: rnnutils.PackedSequence,
+        h0: torch.Tensor,
+    ) -> rnnutils.PackedSequence:
+        """Forward pass of the attention decoder.
+
+        Uses and alignment model at each decoding step to compute a dynamic
+        context vector.
+
+        Args:
+            encoder_output: The hidden states of the encoder.
+            decoder_input: The target sequence for the decoder. For each word
+                in the decoder input, this model produces a hidden state, later
+                used to predict the next word. Essentially this "shifts" the
+                input one position.
+            h0: The initial hidden state of the network.
+
+        Return:
+            The encoder hidden states, from h_1 to h_n, for each sequence in
+            the batch. The value of n depends on the length of each sequence in
+            the batch.
+        """
+        input_padded, decoder_lens = rnnutils.pad_packed_sequence(decoder_input)
+
+        hiddens: list[torch.Tensor] = []
+        hi = h0
+        for word in input_padded.unbind(0):
+            context = self.alignment(encoder_output, hi)
+            hi = self.decoder_cell(torch.concat([word, context], dim=1), hi)
+            hiddens.append(hi)
+
+        return rnnutils.pack_padded_sequence(
+            torch.stack(hiddens), decoder_lens, enforce_sorted=False
+        )
 
 
 class RNNSearch(pl.LightningModule):
@@ -188,3 +258,55 @@ class RNNSearch(pl.LightningModule):
     ) -> None:
         """Initialize an RNNSearch model."""
         super().__init__()
+        self.embedding = nn.Embedding(
+            num_embeddings=vocab_size, embedding_dim=embedding_dim
+        )
+        self.encoder = nn.GRU(
+            input_size=embedding_dim, hidden_size=hidden_size, bidirectional=True
+        )
+        self.bridge = Bridge(input_size=hidden_size, output_size=hidden_size)
+        self.decoder = AttentionDecoder(
+            input_size=embedding_dim,
+            hidden_size=hidden_size,
+            encoder_hidden_size=2 * hidden_size,
+            alignment_dim=alignment_dim,
+        )
+        self.classifier = nn.Linear(hidden_size, output_dim)
+
+    def forward(
+        self,
+        encoder_input: rnnutils.PackedSequence,
+        decoder_input: rnnutils.PackedSequence,
+    ) -> rnnutils.PackedSequence:
+        """Forward pass for the RNNSeach architecture.
+
+        The input sequence is encoded using a bidirectional GRU network.
+        Teacher forcing is then used for the decoding process, where the whole
+        target sequence is passed to the decoder ant its job is to "shift" it
+        by one position.
+
+        The last hidden unit in the backward direction is passed through a
+        bridge network and used as the initial hidden state for the decoder.
+
+        The hidden states of the decoder are passed through a simple linear
+        clssifier to get the final logits.
+
+        Args:
+            encoder_input: The input sequence.
+            decoder_input: Input for the decoder. Used for teacher forcing.
+
+        Return:
+            The decoded logits.
+        """
+        encoder_output, last_hidden = self.encoder(
+            encoder_input._replace(data=self.embedding(encoder_input.data))
+        )
+        decoder_output = self.decoder(
+            encoder_output,
+            decoder_input._replace(data=self.embedding(decoder_input.data)),
+            self.bridge(last_hidden[1]),
+        )
+        logits: rnnutils.PackedSequence = decoder_output._replace(
+            data=self.classifier(decoder_output.data)
+        )
+        return logits

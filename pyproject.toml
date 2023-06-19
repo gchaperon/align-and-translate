@@ -9,12 +9,12 @@ name = "align-and-translate"
 
 [project.optional-dependencies]
 all = ["align-and-translate[train,dev]"]
-dev = ["ipython", "pre-commit", "align-and-translate[test,types,pre-commit]"]
+dev = ["ipython", "pre-commit", "pip-tools", "align-and-translate[test,types,pre-commit]"]
 # pre-commit requirements should be syncd with the versions in
 # .pre-commit-config.yaml
 pre-commit = ["black==23.3.0", "isort==5.12.0", "ruff==0.0.270"]
 test = ["pytest>=6", "coverage", "hypothesis", "align-and-translate[train]"]
-train = ["dvc[ssh]", "datasets", "sentencepiece"]
+train = ["dvc[ssh]<3", "datasets", "sentencepiece", "click", "tensorboard"]
 types = [
   "mypy",
   "align-and-translate[test]",

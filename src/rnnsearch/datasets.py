@@ -144,7 +144,6 @@ class WMT14(pl.LightningDataModule):
         return torch.utils.data.DataLoader(
             _narrow_cast(self._splits[stage]),
             batch_size=self.batch_size,
-            # shuffle=True if stage == "train" else False,
             drop_last=True if stage == "train" else False,
             num_workers=16,
             collate_fn=self.collate_fn,

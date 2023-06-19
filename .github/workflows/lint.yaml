@@ -31,6 +31,6 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit-3|${{ runner.os }}|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Installl pre-commit
-        run: pip install pre-commit -c requirements/all.txt
+        run: pip install pre-commit
       - name: Run pre-commit
         run: pre-commit run --show-diff-on-failure --color=always --all-files

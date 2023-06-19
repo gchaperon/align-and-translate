@@ -1,10 +1,13 @@
 """RNNsearch model definition."""
+import operator
 import typing as tp
 
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.utils.rnn as rnnutils
+
+import rnnsearch.datasets as datasets
 
 
 class Bridge(nn.Module):
@@ -255,6 +258,8 @@ class RNNSearch(pl.LightningModule):
         hidden_size: int,
         output_dim: int,
         alignment_dim: int,
+        *,
+        learn_rate: float,
     ) -> None:
         """Initialize an RNNSearch model."""
         super().__init__()
@@ -272,6 +277,9 @@ class RNNSearch(pl.LightningModule):
             alignment_dim=alignment_dim,
         )
         self.classifier = nn.Linear(hidden_size, output_dim)
+        self.loss = nn.CrossEntropyLoss()
+
+        self.learn_rate = learn_rate
 
     def forward(
         self,
@@ -310,3 +318,26 @@ class RNNSearch(pl.LightningModule):
             data=self.classifier(decoder_output.data)
         )
         return logits
+
+    def training_step(self, batch: datasets.TrainItem, _: int) -> torch.Tensor:
+        """Train step."""
+        input, teacher_forcing, target = operator.attrgetter("fr", "en", "target")(
+            batch
+        )
+        logits = self(input, teacher_forcing)
+        loss: torch.Tensor = self.loss(logits.data, target.data)
+        self.log("train/loss", loss, batch_size=target.batch_sizes[0], prog_bar=True)
+        return loss
+
+    def validation_step(self, batch: datasets.TrainItem, _: int) -> None:
+        """Validation step."""
+        input, teacher_forcing, target = operator.attrgetter("fr", "en", "target")(
+            batch
+        )
+        logits = self(input, teacher_forcing)
+        loss: torch.Tensor = self.loss(logits.data, target.data)
+        self.log("val/loss", loss, batch_size=target.batch_sizes[0])
+
+    def configure_optimizers(self) -> torch.optim.Optimizer:
+        """Uptimizer for the network."""
+        return torch.optim.Adam(self.parameters(), lr=self.learn_rate)

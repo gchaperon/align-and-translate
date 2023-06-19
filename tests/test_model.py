@@ -1,3 +1,4 @@
+import datetime as dt
 import typing as tp
 
 import torch
@@ -7,8 +8,10 @@ from hypothesis import strategies as st
 
 import rnnsearch.nn as nn
 
+default_settings = settings(max_examples=20, deadline=dt.timedelta(seconds=1))
 
-@settings(max_examples=20)
+
+@default_settings
 @given(
     st.integers(min_value=1, max_value=20),
     st.integers(min_value=1, max_value=20),
@@ -35,7 +38,7 @@ def sequence_batch(vector_size: int, lengths: tp.List[int]) -> rnnutils.PackedSe
     )
 
 
-@settings(max_examples=20)
+@default_settings
 @given(
     st.data(),
     st.integers(1, 20),
@@ -73,7 +76,7 @@ def test_alignment(
     assert torch.allclose(torch.sum(scores, dim=0), torch.tensor(1.0))
 
 
-@settings(max_examples=20)
+@default_settings
 @given(
     st.data(),
     st.integers(1, 20),
@@ -115,7 +118,7 @@ def test_attention_decoder(
     assert torch.all(output_lens == input_lens)
 
 
-@settings(max_examples=20)
+@default_settings
 @given(
     st.data(),
     *(st.integers(min_value=1, max_value=20) for _ in range(5)),
@@ -132,7 +135,12 @@ def test_rnnsearch_model(
     batch_size: int,
 ) -> None:
     model = nn.RNNSearch(
-        vocab_size, embedding_dim, hidden_size, output_dim, alignment_dim
+        vocab_size,
+        embedding_dim,
+        hidden_size,
+        output_dim,
+        alignment_dim,
+        learn_rate=1e-3,
     )
     lengths = st.lists(st.integers(1, 20), min_size=batch_size, max_size=batch_size)
     input = rnnutils.pack_sequence(

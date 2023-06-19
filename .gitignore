@@ -1,5 +1,7 @@
 # env stuff
 /env/
+/env38/
+/env39/
 
 # python distribution
 __pycache__
@@ -20,3 +22,7 @@ build/
 # coverage.py
 .coverage
 /htmlcov/
+
+# lightning logging
+/lightning_logs/
+/logs/

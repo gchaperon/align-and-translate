@@ -147,7 +147,7 @@ class Alignment(nn.Module):
     @functools.lru_cache(maxsize=1)
     def _encoder_pad_and_project(
         self, encoder_output: rnnutils.PackedSequence
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Apply the encoder weight and cache it.
 
         Given maxsize=1, this essentially caches the application of the

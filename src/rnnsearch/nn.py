@@ -1,4 +1,5 @@
 """RNNsearch model definition."""
+import functools
 import operator
 import typing as tp
 
@@ -46,6 +47,9 @@ class _Reducer(nn.Module):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return torch.matmul(input, self.v)
+
+    def extra_repr(self) -> str:
+        return f"input_size={self.v.shape[0]}"
 
 
 def _multiarange(counts: torch.Tensor) -> torch.Tensor:
@@ -140,6 +144,19 @@ class Alignment(nn.Module):
             torch.repeat_interleave(lens_complement),
         )
 
+    @functools.lru_cache(maxsize=1)
+    def _encoder_pad_and_project(
+        self, encoder_output: rnnutils.PackedSequence
+    ) -> tp.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Apply the encoder weight and cache it.
+
+        Given maxsize=1, this essentially caches the application of the
+        encoder weight in the sequential decoding steps.
+        """
+        encoder_padded, encoder_lens = rnnutils.pad_packed_sequence(encoder_output)
+        projection: torch.Tensor = self.encoder_w(encoder_padded)
+        return encoder_padded, encoder_lens, projection
+
     def forward(
         self,
         encoder_output: rnnutils.PackedSequence,
@@ -158,14 +175,13 @@ class Alignment(nn.Module):
         Return:
             The weighted context vector.
         """
-        encoder_padded, encoder_lens = rnnutils.pad_packed_sequence(encoder_output)
-        # NOTE: the paper mentions caching the tensors after linear layer for
-        # the encoder hiddens. I'm not cool and efficient like them, so no
-        # caching.
+        (
+            encoder_padded,
+            encoder_lens,
+            encoder_projection,
+        ) = self._encoder_pad_and_project(encoder_output)
         energy_padded = self.reducer(
-            self.activation(
-                self.encoder_w(encoder_padded) + self.decoder_w(last_decoder_hidden)
-            )
+            self.activation(encoder_projection + self.decoder_w(last_decoder_hidden))
         )
         energy_padded[self.attention_mask(encoder_lens)] = -torch.inf
         scores_padded = self.softmax(energy_padded)
@@ -248,6 +264,14 @@ class AttentionDecoder(nn.Module):
         )
 
 
+def _make_classifier(input_features: int, output_features: int) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Linear(input_features, 500),
+        nn.ReLU(),
+        nn.Linear(500, output_features),
+    )
+
+
 class RNNSearch(pl.LightningModule):
     """RNNSearch model, as defined in the paper."""
 
@@ -263,6 +287,8 @@ class RNNSearch(pl.LightningModule):
     ) -> None:
         """Initialize an RNNSearch model."""
         super().__init__()
+        self.save_hyperparameters()
+        # NOTE: shared embedding matrix for source and target language
         self.embedding = nn.Embedding(
             num_embeddings=vocab_size, embedding_dim=embedding_dim
         )
@@ -276,7 +302,7 @@ class RNNSearch(pl.LightningModule):
             encoder_hidden_size=2 * hidden_size,
             alignment_dim=alignment_dim,
         )
-        self.classifier = nn.Linear(hidden_size, output_dim)
+        self.classifier = _make_classifier(hidden_size, output_dim)
         self.loss = nn.CrossEntropyLoss()
 
         self.learn_rate = learn_rate

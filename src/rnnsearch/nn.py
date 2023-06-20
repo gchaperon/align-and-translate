@@ -47,6 +47,9 @@ class _Reducer(nn.Module):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return torch.matmul(input, self.v)
 
+    def extra_repr(self) -> str:
+        return f"input_size={self.v.shape[0]}"
+
 
 def _multiarange(counts: torch.Tensor) -> torch.Tensor:
     """Returns a sequence of aranges concatenated along the first dimension.
@@ -263,6 +266,8 @@ class RNNSearch(pl.LightningModule):
     ) -> None:
         """Initialize an RNNSearch model."""
         super().__init__()
+        self.save_hyperparameters()
+        # NOTE: shared embedding matrix for source and target language
         self.embedding = nn.Embedding(
             num_embeddings=vocab_size, embedding_dim=embedding_dim
         )
@@ -340,4 +345,4 @@ class RNNSearch(pl.LightningModule):
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         """Uptimizer for the network."""
-        return torch.optim.Adam(self.parameters(), lr=self.learn_rate)
+        return torch.optim.SGD(self.parameters(), lr=self.learn_rate)

@@ -14,7 +14,7 @@ dev = ["ipython", "pre-commit", "pip-tools", "align-and-translate[test,types,pre
 # .pre-commit-config.yaml
 pre-commit = ["black==23.3.0", "isort==5.12.0", "ruff==0.0.270"]
 test = ["pytest>=6", "coverage", "hypothesis", "align-and-translate[train]"]
-train = ["dvc[ssh]<3", "datasets", "sentencepiece", "click", "tensorboard"]
+train = ["dvc[ssh]<3", "datasets", "sentencepiece", "typer", "tensorboard"]
 types = [
   "mypy",
   "align-and-translate[test]",

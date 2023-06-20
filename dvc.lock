@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   build-tokenizer:
-    cmd: python scripts/train_tokenizer.py
+    cmd: python scripts/train_tokenizer.py --vocab-size 30000
     deps:
     - path: data/hf-datasets/wmt14
       md5: 314a5483a3ffa3d3596aa8ca765639ee.dir
@@ -12,6 +12,6 @@ stages:
       size: 3193
     outs:
     - path: data/tokenizer
-      md5: 1777251e74bbd4e6999fb9799a30f968.dir
-      size: 3125460
+      md5: 46c9ecb5c7cc3fa7699eb3c3f07c027f.dir
+      size: 1656261
       nfiles: 2

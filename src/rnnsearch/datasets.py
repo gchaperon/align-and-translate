@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import typing as tp
 
+import omegaconf
 import pytorch_lightning as pl
 import sentencepiece
 import torch
@@ -56,6 +57,17 @@ class WMT14(pl.LightningDataModule):
     batch_size: int
 
     _splits: FlatWMT14DatasetDict
+
+    @dataclasses.dataclass
+    class Config:
+        """Config class for the WMT14 datamodule.
+
+        Attribtues and respective types should be in sync with the arguments of
+        __init__.
+        """
+
+        datadir: str = omegaconf.MISSING
+        batch_size: int = omegaconf.MISSING
 
     def __init__(self, datadir: pathlib.Path | str, batch_size: int) -> None:
         """Create a wmt14 datamodule. Has train, val and test dataloaders.

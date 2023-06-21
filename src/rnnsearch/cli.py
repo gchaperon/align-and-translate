@@ -1,19 +1,21 @@
 """CLI module implementing commands to train the network."""
+import dataclasses
 import pathlib
 import shlex
 import subprocess
+import typing as tp
 
 import pytorch_lightning as pl
 import sentencepiece as spm
 import torch
 import typer
+import typing_extensions as tpx
+from omegaconf import OmegaConf
 
 import rnnsearch.datasets as datasets
 import rnnsearch.nn as nn
 
-DATADIR = pathlib.Path("data")
-
-
+DATADIR = "data"
 cli = typer.Typer(
     pretty_exceptions_enable=False,
     pretty_exceptions_show_locals=False,
@@ -22,37 +24,94 @@ cli = typer.Typer(
 
 
 def _get_vocab_size() -> int:
-    subprocess.call(shlex.split("dvc pull data/tokenizer"))
+    subprocess.run(shlex.split("dvc pull data/tokenizer"), capture_output=True)
     vocab_size = spm.SentencePieceProcessor(
-        model_file=str(DATADIR / "tokenizer" / "tokenizer.model")
+        model_file=str(pathlib.Path(DATADIR) / "tokenizer" / "tokenizer.model")
     ).vocab_size()
     return vocab_size
 
 
+@dataclasses.dataclass
+class TrainerConfig:
+    """Trainer config."""
+
+    deterministic: bool = True
+
+
+@dataclasses.dataclass
+class TrainingConfig:
+    """Config class for training related params."""
+
+    seed: int = 1234
+    trainer: TrainerConfig = dataclasses.field(default_factory=TrainerConfig)
+
+
+@dataclasses.dataclass
+class Settings:
+    """Settings class."""
+
+    model: nn.RNNSearch.Config = dataclasses.field(default_factory=nn.RNNSearch.Config)
+    dataset: datasets.WMT14.Config = dataclasses.field(
+        default_factory=datasets.WMT14.Config
+    )
+    training: TrainingConfig = dataclasses.field(default_factory=TrainingConfig)
+
+
+def _merge_settings(
+    config: pathlib.Path,
+    cmd_options: tp.List[str],
+    extra_options: tp.Dict[str, tp.Any],
+) -> Settings:
+    defaults = OmegaConf.structured(Settings)
+    from_file = OmegaConf.load(config)
+    from_cmd = OmegaConf.from_dotlist(cmd_options)
+    from_extras = OmegaConf.create(extra_options)
+    merged: Settings = OmegaConf.merge(  # type: ignore[assignment]
+        defaults,
+        from_extras,
+        from_file,
+        from_cmd,
+    )
+    return merged
+
+
 @cli.command()
 def train(
-    embedding_dim: int = 620,
-    hidden_size: int = 1000,
-    alignment_dim: int = 1000,
-    learn_rate: float = 1e-3,
-    batch_size: int = 80,
+    *,
+    config: tpx.Annotated[
+        pathlib.Path, typer.Option(show_default=False)
+    ] = pathlib.Path("/dev/null"),
+    options: tpx.Annotated[
+        tp.List[str],
+        typer.Option(
+            "--option",
+            "-o",
+            help="""Override options using dotlist style keys. Can be used
+            multiple times. Example: -o dataset.batch_size=32 -o
+            model.hidden_size=100""",
+            show_default=False,
+            default_factory=list,
+        ),
+    ],
 ) -> None:
     """Command to train the network."""
-    torch.set_float32_matmul_precision("medium")
     vocab_size = _get_vocab_size()
-    model = nn.RNNSearch(
-        vocab_size=vocab_size,
-        embedding_dim=embedding_dim,
-        hidden_size=hidden_size,
-        output_dim=vocab_size,
-        alignment_dim=alignment_dim,
-        learn_rate=learn_rate,
+    settings = _merge_settings(
+        config,
+        options,
+        dict(
+            model=dict(vocab_size=vocab_size, output_dim=vocab_size),
+            dataset=dict(datadir=DATADIR),
+        ),
     )
-    datamodule = datasets.WMT14(datadir=DATADIR, batch_size=batch_size)
-    trainer = pl.Trainer(
-        accelerator="gpu",
-        devices=1,
-        max_epochs=100,
+    torch.set_float32_matmul_precision("medium")
+    pl.seed_everything(settings.training.seed)
+    # NOTE: on ignore[arg-type], this works, but OmegaConf doesn't play well
+    # with mypy (specially nested configs)
+    model = nn.RNNSearch(**settings.model)  # type: ignore[arg-type]
+    datamodule = datasets.WMT14(**settings.dataset)  # type: ignore[arg-type]
+    trainer = pl.Trainer(  # type: ignore[arg-type]
+        accelerator="gpu", devices=1, max_epochs=100, **settings.training.trainer
     )
     trainer.fit(model, datamodule)
 

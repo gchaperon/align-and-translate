@@ -1,8 +1,10 @@
 """RNNsearch model definition."""
+import dataclasses
 import functools
 import operator
 import typing as tp
 
+import omegaconf
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -274,6 +276,21 @@ def _make_classifier(input_features: int, output_features: int) -> nn.Sequential
 
 class RNNSearch(pl.LightningModule):
     """RNNSearch model, as defined in the paper."""
+
+    @dataclasses.dataclass
+    class Config:
+        """Config class for the RNNSearch model.
+
+        Types should match the signature of the __init__ method.
+        Defaults should be placed here instead of the init signature.
+        """
+
+        vocab_size: int = omegaconf.MISSING
+        embedding_dim: int = omegaconf.MISSING
+        hidden_size: int = omegaconf.MISSING
+        output_dim: int = omegaconf.MISSING
+        alignment_dim: int = omegaconf.MISSING
+        learn_rate: float = 1e-3
 
     def __init__(
         self,

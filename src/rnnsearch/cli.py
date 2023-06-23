@@ -36,6 +36,8 @@ class TrainerConfig:
     """Trainer config."""
 
     deterministic: bool = True
+    max_epochs: int = 100
+    max_steps: int = -1
 
 
 @dataclasses.dataclass
@@ -104,6 +106,7 @@ def train(
             dataset=dict(datadir=DATADIR),
         ),
     )
+    print(OmegaConf.to_yaml(settings).strip())
     torch.set_float32_matmul_precision("medium")
     pl.seed_everything(settings.training.seed)
     # NOTE: on ignore[arg-type], this works, but OmegaConf doesn't play well
@@ -111,7 +114,9 @@ def train(
     model = nn.RNNSearch(**settings.model)  # type: ignore[arg-type]
     datamodule = datasets.WMT14(**settings.dataset)  # type: ignore[arg-type]
     trainer = pl.Trainer(  # type: ignore[arg-type]
-        accelerator="gpu", devices=1, max_epochs=100, **settings.training.trainer
+        accelerator="gpu",
+        devices=1,
+        **settings.training.trainer,
     )
     trainer.fit(model, datamodule)
 

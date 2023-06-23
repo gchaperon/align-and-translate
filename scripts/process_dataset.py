@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 """Script to create the WMT14 dataset.
 
 The preprocessing done in the paper is quite complex, but here the only thing
@@ -9,7 +8,9 @@ using.
 The number of sentences filtered is very little, less than 0.1% of the total
 pairs, and so the impact on training performance should be negligible.
 """
+import os
 import pathlib
+import typing as tp
 
 import sentencepiece as spm
 from datasets import load_dataset
@@ -17,7 +18,8 @@ from datasets import load_dataset
 OUTPUT_DIR = pathlib.Path("data/wmt14")
 TOKENIZER_DIR = pathlib.Path("data/tokenizer")
 
-FILTER_THRESHOLD = 300
+# NOTE: largest number that fit in my RTX3060, i know, i'm poor
+FILTER_THRESHOLD = 100
 
 
 def main() -> None:
@@ -32,7 +34,7 @@ def main() -> None:
         revision="ebb5f5979fd115cd1e9d2537103db12539f29822",
     )
     tokenizer = spm.SentencePieceProcessor(
-        model_file=str(TOKENIZER_DIR / "tokenizer.model")
+        model_file=str(TOKENIZER_DIR / "tokenizer.model"), num_threads=0
     )
 
     dataset = (
@@ -41,39 +43,39 @@ def main() -> None:
         .rename_column("translation.fr", "fr")
     )
 
-    def process_fn(batch):
+    def process_fn(
+        batch: dict[str, list[str]]
+    ) -> dict[str, list[list[str]] | list[int]]:
         en_tokens = tokenizer.encode(batch["en"], out_type=str)
         fr_tokens = tokenizer.encode(batch["fr"], out_type=str)
-        return {"en_tokens": en_tokens, "fr_tokens": fr_tokens}
-
-    def filter_fn(items):
-        return [
-            len(en_tokens) <= FILTER_THRESHOLD and len(fr_tokens) <= FILTER_THRESHOLD
-            for en_tokens, fr_tokens in zip(items["en_tokens"], items["fr_tokens"])
-        ]
-
-    tokenized = dataset.map(process_fn, batched=True)
-    filtered = tokenized.filter(filter_fn, batched=True, num_proc=8)
-
-    # Could've been done in process_fn, but I already had that in cache and I
-    # didn't want to process de whole dataset again
-    def counts(batch):
         return {
-            "en_count": [len(item) for item in batch["en_tokens"]],
-            "fr_counts": [len(item) for item in batch["fr_tokens"]],
+            "en_tokens": en_tokens,
+            "en_count": [len(toks) for toks in en_tokens],
+            "fr_tokens": fr_tokens,
+            "fr_count": [len(toks) for toks in fr_tokens],
         }
 
-    with_counts = filtered.map(counts, batched=True, num_proc=8)
-    sorted_dataset = with_counts.sort(
-        ["en_count", "fr_counts"], reverse=True, writer_batch_size=10_000
-    )
+    def filter_fn(items: dict[str, tp.Any]) -> list[bool]:
+        return [
+            en_count <= FILTER_THRESHOLD and fr_count <= FILTER_THRESHOLD
+            for en_count, fr_count in zip(items["en_count"], items["fr_count"])
+        ]
 
+    tokenized = dataset.map(process_fn, batched=True, num_proc=os.cpu_count())
+    filtered = tokenized
+    filtered["train"] = tokenized["train"].filter(
+        filter_fn, batched=True, num_proc=os.cpu_count()
+    )
     OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
-    sorted_dataset.remove_columns(
-        ["en_tokens", "fr_tokens", "en_count", "fr_counts"]
-    ).save_to_disk(OUTPUT_DIR, max_shard_size="1GB")
+    filtered.remove_columns(
+        ["en_tokens", "fr_tokens", "en_count", "fr_count"]
+    ).save_to_disk(OUTPUT_DIR)
     print("Saved dataset", filtered)
     print("to", OUTPUT_DIR)
+    print(
+        "Original dataset reduced to",
+        f"{len(filtered['train']) / len(dataset['train']):.0%}",
+    )
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ import pytorch_lightning as pl
 import sentencepiece
 import torch
 import torch.nn.utils.rnn as rnnutils
-from datasets import load_dataset
+from datasets import load_from_disk
 
 if tp.TYPE_CHECKING:
     import torch.utils.data
@@ -113,12 +113,9 @@ class WMT14(pl.LightningDataModule):
         if not _is_path(self.datadir):
             return
 
-        self._splits = load_dataset(
-            "wmt14",
-            name="fr-en",
-            cache_dir=str(self.datadir / "hf-datasets"),
-            revision="ebb5f5979fd115cd1e9d2537103db12539f29822",
-        ).flatten()
+        self._splits = load_from_disk(
+                str(self.datadir/"wmt14")
+        )
         self.tokenizer = sentencepiece.SentencePieceProcessor(
             model_file=str(self.datadir / "tokenizer" / "tokenizer.model"),
             num_threads=0,
@@ -142,12 +139,12 @@ class WMT14(pl.LightningDataModule):
 
         fr_sents, en_sents = [], []
         for item in batch:
-            fr_sents.append(item["translation.fr"])
-            en_sents.append(item["translation.en"])
+            fr_sents.append(item["fr"])
+            en_sents.append(item["en"])
         return TrainItem(
-            collate_single(fr_sents, add_bos=True, add_eos=True),
-            collate_single(en_sents, add_bos=True, add_eos=False),
-            collate_single(en_sents, add_bos=False, add_eos=True),
+            collate_single(en_sents, add_bos=True, add_eos=True),
+            collate_single(fr_sents, add_bos=True, add_eos=False),
+            collate_single(fr_sents, add_bos=False, add_eos=True),
         )
 
     def _make_dataloader(

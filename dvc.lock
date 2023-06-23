@@ -11,3 +11,18 @@ stages:
       md5: 46c9ecb5c7cc3fa7699eb3c3f07c027f.dir
       size: 1656261
       nfiles: 2
+  process-dataset:
+    cmd: python scripts/process_dataset.py
+    deps:
+    - path: data/tokenizer
+      md5: 46c9ecb5c7cc3fa7699eb3c3f07c027f.dir
+      size: 1656261
+      nfiles: 2
+    - path: scripts/process_dataset.py
+      md5: eb885b8b732778a52937cac8cfb30eb4
+      size: 2395
+    outs:
+    - path: data/wmt14
+      md5: fa59a796f45e1fee1b23f59a7884d2ab.dir
+      size: 14444602425
+      nfiles: 24

@@ -70,7 +70,7 @@ testpaths = [
 
 [tool.ruff]
 extend-exclude = ["env"]
-ignore = ["B019"]
+ignore = ["B019", "B905"]
 line-length = 88
 select = ["D", "E", "F", "T10", "ARG", "B", "ERA"]
 

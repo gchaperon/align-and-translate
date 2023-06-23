@@ -82,7 +82,7 @@ def main(vocab_size: int) -> None:
         "wmt14",
         name="fr-en",
         split=f"train[:{MAX_SENTENCES//2}]",
-        cache_dir="data/hf-datasets/",
+        revision="ebb5f5979fd115cd1e9d2537103db12539f29822",
     )
     sentences = (
         sent

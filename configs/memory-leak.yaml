@@ -1,7 +1,7 @@
 dataset:
-  batch_size: 80
+  batch_size: 32
 
 model:
-  embedding_dim: 500
-  hidden_size: 500
-  alignment_dim: 500
+  embedding_dim: 300
+  hidden_size: 300
+  alignment_dim: 300

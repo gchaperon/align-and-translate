@@ -58,7 +58,7 @@ class WMT14(_DatasetsCommon):
 def load_dataset(
     path: Literal["wmt14"],
     name: Literal["fr-en"],
-    split: Literal["train", "validation", "test"],
+    split: str,
     revision: str | None = None,
 ) -> WMT14: ...
 @overload

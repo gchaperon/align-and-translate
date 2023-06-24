@@ -60,10 +60,6 @@ show_error_codes = true
 # reasoning for each should be clearly documented
 strict = true
 
-[[tool.mypy.overrides]]
-ignore_missing_imports = true
-module = ["datasets.*"]
-
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"
 minversion = "6.0"

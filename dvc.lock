@@ -3,15 +3,26 @@ stages:
   build-tokenizer:
     cmd: python scripts/train_tokenizer.py --vocab-size 30000
     deps:
-    - path: data/hf-datasets/wmt14
-      md5: 314a5483a3ffa3d3596aa8ca765639ee.dir
-      size: 15098090914
-      nfiles: 36
     - path: scripts/train_tokenizer.py
-      md5: 57eb4f5df01695bc0ccccf13eb76490d
-      size: 3193
+      md5: 64679f06ed52243ae739cf309d8279c6
+      size: 3215
     outs:
     - path: data/tokenizer
       md5: 46c9ecb5c7cc3fa7699eb3c3f07c027f.dir
       size: 1656261
       nfiles: 2
+  process-dataset:
+    cmd: python scripts/process_dataset.py
+    deps:
+    - path: data/tokenizer
+      md5: 46c9ecb5c7cc3fa7699eb3c3f07c027f.dir
+      size: 1656261
+      nfiles: 2
+    - path: scripts/process_dataset.py
+      md5: 142b7dc2394d69b8b232b523c4063f15
+      size: 2625
+    outs:
+    - path: data/wmt14
+      md5: 8d68fa6c96bc54a9d6a42520aff9903e.dir
+      size: 12869511699
+      nfiles: 38

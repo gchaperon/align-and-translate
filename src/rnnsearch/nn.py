@@ -1,8 +1,11 @@
 """RNNsearch model definition."""
+import dataclasses
 import functools
 import operator
+import re
 import typing as tp
 
+import omegaconf
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -275,6 +278,21 @@ def _make_classifier(input_features: int, output_features: int) -> nn.Sequential
 class RNNSearch(pl.LightningModule):
     """RNNSearch model, as defined in the paper."""
 
+    @dataclasses.dataclass
+    class Config:
+        """Config class for the RNNSearch model.
+
+        Types should match the signature of the __init__ method.
+        Defaults should be placed here instead of the init signature.
+        """
+
+        vocab_size: int = omegaconf.MISSING
+        embedding_dim: int = omegaconf.MISSING
+        hidden_size: int = omegaconf.MISSING
+        output_dim: int = omegaconf.MISSING
+        alignment_dim: int = omegaconf.MISSING
+        learn_rate: float = 1e-3
+
     def __init__(
         self,
         vocab_size: int,
@@ -288,6 +306,7 @@ class RNNSearch(pl.LightningModule):
         """Initialize an RNNSearch model."""
         super().__init__()
         self.save_hyperparameters()
+
         # NOTE: shared embedding matrix for source and target language
         self.embedding = nn.Embedding(
             num_embeddings=vocab_size, embedding_dim=embedding_dim
@@ -304,8 +323,25 @@ class RNNSearch(pl.LightningModule):
         )
         self.classifier = _make_classifier(hidden_size, output_dim)
         self.loss = nn.CrossEntropyLoss()
-
         self.learn_rate = learn_rate
+
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        """Initializes the parameter weights according to the paper."""
+        for name, parameter in self.named_parameters():
+            if "weight_hh" in name:
+                # U, U_z, U_r, ...
+                for chunk in torch.chunk(parameter, 3):
+                    # NOTE: I am not completely sure this is actually the
+                    # initialization used in the paper
+                    nn.init.orthogonal_(chunk)
+            elif re.search("alignment.*weight", name):
+                nn.init.normal_(parameter, 0.0, 0.001)
+            elif any(subs in name for subs in ("reducer.v", "bias")):
+                nn.init.zeros_(parameter)
+            else:
+                nn.init.normal_(parameter, 0.0, 0.01)
 
     def forward(
         self,
@@ -347,7 +383,7 @@ class RNNSearch(pl.LightningModule):
 
     def training_step(self, batch: datasets.TrainItem, _: int) -> torch.Tensor:
         """Train step."""
-        input, teacher_forcing, target = operator.attrgetter("fr", "en", "target")(
+        input, teacher_forcing, target = operator.attrgetter("en", "fr", "target")(
             batch
         )
         logits = self(input, teacher_forcing)
@@ -357,7 +393,7 @@ class RNNSearch(pl.LightningModule):
 
     def validation_step(self, batch: datasets.TrainItem, _: int) -> None:
         """Validation step."""
-        input, teacher_forcing, target = operator.attrgetter("fr", "en", "target")(
+        input, teacher_forcing, target = operator.attrgetter("en", "fr", "target")(
             batch
         )
         logits = self(input, teacher_forcing)

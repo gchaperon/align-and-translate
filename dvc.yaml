@@ -2,7 +2,13 @@ stages:
   build-tokenizer:
     cmd: python scripts/train_tokenizer.py --vocab-size 30000
     deps:
-      - data/hf-datasets/wmt14
       - scripts/train_tokenizer.py
     outs:
       - data/tokenizer
+  process-dataset:
+    cmd: python scripts/process_dataset.py
+    deps:
+      - data/tokenizer
+      - scripts/process_dataset.py
+    outs:
+      - data/wmt14

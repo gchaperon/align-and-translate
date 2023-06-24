@@ -106,7 +106,7 @@ def train(
             dataset=dict(datadir=DATADIR),
         ),
     )
-    print(OmegaConf.to_yaml(settings).strip())
+    print("Config\n", OmegaConf.to_yaml(settings).strip())  # noqa: T201
     torch.set_float32_matmul_precision("medium")
     pl.seed_everything(settings.training.seed)
     # NOTE: on ignore[arg-type], this works, but OmegaConf doesn't play well

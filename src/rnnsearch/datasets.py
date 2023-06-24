@@ -16,11 +16,7 @@ from datasets import load_from_disk
 
 if tp.TYPE_CHECKING:
     import torch.utils.data
-    from datasets import (  # WMT14Dataset,; WMT14DatasetDict,
-        FlatWMT14Dataset,
-        FlatWMT14DatasetDict,
-        FlatWMT14Item,
-    )
+    from datasets import DatasetDict, TranslationItem
 
 
 @dataclasses.dataclass
@@ -30,8 +26,8 @@ class TrainItem:
     The ``target`` attribute is used for teacher forcing.
     """
 
-    fr: rnnutils.PackedSequence
     en: rnnutils.PackedSequence
+    fr: rnnutils.PackedSequence
     target: rnnutils.PackedSequence
 
 
@@ -40,7 +36,7 @@ def _is_path(maybe_path: pathlib.Path | None) -> tp.TypeGuard[pathlib.Path]:
 
 
 def _narrow_cast(
-    x: FlatWMT14Dataset,
+    x: torch.utils.data.Dataset[TranslationItem],
 ) -> torch.utils.data.Dataset[TrainItem]:
     return x  # type: ignore[return-value]
 
@@ -53,10 +49,10 @@ class WMT14(pl.LightningDataModule):
         Dataset.shuffle, Dataset.iter, etc
     """
 
-    datadir: pathlib.Path | None
+    datadir: pathlib.Path
     batch_size: int
 
-    _splits: FlatWMT14DatasetDict
+    _splits: DatasetDict
 
     @dataclasses.dataclass
     class Config:
@@ -92,11 +88,6 @@ class WMT14(pl.LightningDataModule):
         """
         subprocess.call(shlex.split("dvc pull"))
 
-    @property
-    def in_memory(self) -> bool:
-        """An in-memory datamodule is not mapped to a location on disk."""
-        return _is_path(self.datadir)
-
     def setup(self, stage: str | None = None) -> None:
         """Loads the dataset splits.
 
@@ -108,20 +99,14 @@ class WMT14(pl.LightningDataModule):
                 memory penalty.
         """
         assert stage in ("fit", "validate", "test", "predict", None), "Invalid stage"
-        # NOTE: equivalent to using self.in_memory, but then it doesn't work as
-        # a type guard.
-        if not _is_path(self.datadir):
-            return
 
-        self._splits = load_from_disk(
-                str(self.datadir/"wmt14")
-        )
+        self._splits = load_from_disk(str(self.datadir / "wmt14"))
         self.tokenizer = sentencepiece.SentencePieceProcessor(
             model_file=str(self.datadir / "tokenizer" / "tokenizer.model"),
             num_threads=0,
         )
 
-    def collate_fn(self, batch: list[FlatWMT14Item[str]]) -> TrainItem:
+    def collate_fn(self, batch: list[TranslationItem]) -> TrainItem:
         """Pack into PackedSequence the values of a FlatWMT14Item."""
 
         def collate_single(
@@ -153,6 +138,7 @@ class WMT14(pl.LightningDataModule):
         return torch.utils.data.DataLoader(
             _narrow_cast(self._splits[stage]),
             batch_size=self.batch_size,
+            shuffle=True if stage == "train" else False,
             drop_last=True if stage == "train" else False,
             num_workers=16,
             collate_fn=self.collate_fn,
@@ -175,3 +161,74 @@ class WMT14(pl.LightningDataModule):
     ) -> torch.utils.data.DataLoader[TrainItem]:
         """Return test dataloader."""
         return self._make_dataloader("test")
+
+
+class _DummyItem(tp.TypedDict):
+    en: list[int]
+    fr: list[int]
+
+
+@dataclasses.dataclass
+class _DummyDataset:
+    nexamples: int
+    sentence_length: int
+    vocab_size: int
+
+    base_seed: int = 1234
+
+    def __getitem__(self, key: int) -> _DummyItem:
+        if not 0 <= key < len(self):
+            raise IndexError()
+        gen = torch.Generator()
+        gen.manual_seed(self.base_seed + key)
+        both = torch.randint(
+            0, self.vocab_size, (2, self.sentence_length), generator=gen
+        ).tolist()
+        return {"en": both[0], "fr": both[1]}
+
+    def __len__(self) -> int:
+        return self.nexamples
+
+
+class Dummy(pl.LightningDataModule):
+    """Dummy datamodule to test GPU memory limitations with large sequence lengths."""
+
+    def __init__(self, *_: tp.Any, batch_size: int, **__: tp.Any) -> None:  # noqa: D107
+        super().__init__()
+        self.save_hyperparameters()
+        self.batch_size = batch_size
+
+    def setup(self, *_: tp.Any, **__: tp.Any) -> None:  # noqa: D102
+        self.dataset = _DummyDataset(
+            nexamples=1_000_000, sentence_length=110, vocab_size=30_000
+        )
+
+    @staticmethod
+    def _narrow_cast(x: _DummyDataset) -> torch.utils.data.Dataset[TrainItem]:
+        return x  # type: ignore[return-value]
+
+    @staticmethod
+    def collate_fn(batch: list[_DummyItem]) -> TrainItem:
+        """Convert list of items to a single batch for training."""
+        src_idss = [item["en"] for item in batch]
+        tgt_idss = [item["fr"] for item in batch]
+        src_packed = rnnutils.pack_sequence(
+            [torch.tensor(src_ids) for src_ids in src_idss], enforce_sorted=False
+        )
+        tgt_packed = rnnutils.pack_sequence(
+            [torch.tensor(tgt_ids) for tgt_ids in tgt_idss], enforce_sorted=False
+        )
+        # NOTE: the same as tgt_packed
+        teacher_forcing = rnnutils.pack_sequence(
+            [torch.tensor(tgt_ids) for tgt_ids in tgt_idss], enforce_sorted=False
+        )
+
+        return TrainItem(en=src_packed, fr=tgt_packed, target=teacher_forcing)
+
+    def train_dataloader(self) -> torch.utils.data.DataLoader[TrainItem]:
+        """Dummy train dataloader."""
+        return torch.utils.data.DataLoader(
+            self._narrow_cast(self.dataset),
+            batch_size=self.batch_size,
+            collate_fn=self.collate_fn,
+        )

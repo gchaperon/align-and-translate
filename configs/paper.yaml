@@ -5,3 +5,7 @@ model:
   embedding_dim: 620
   hidden_size: 1000
   alignment_dim: 1000
+
+training:
+  trainer:
+    val_check_interval: 300

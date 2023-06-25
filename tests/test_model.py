@@ -121,7 +121,8 @@ def test_attention_decoder(
 @default_settings
 @given(
     st.data(),
-    *(st.integers(min_value=1, max_value=20) for _ in range(5)),
+    st.integers(min_value=2, max_value=20),  # There is no support for vocab size of 1
+    *(st.integers(min_value=1, max_value=20) for _ in range(4)),
     st.integers(1, 8),
 )
 @torch.no_grad()

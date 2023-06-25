@@ -10,6 +10,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.utils.rnn as rnnutils
+import torchmetrics
 
 import rnnsearch.datasets as datasets
 
@@ -325,6 +326,10 @@ class RNNSearch(pl.LightningModule):
         self.loss = nn.CrossEntropyLoss()
         self.learn_rate = learn_rate
 
+        self.val_token_acc = torchmetrics.classification.MulticlassAccuracy(
+            num_classes=vocab_size, average="micro"
+        )
+
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
@@ -399,6 +404,8 @@ class RNNSearch(pl.LightningModule):
         logits = self(input, teacher_forcing)
         loss: torch.Tensor = self.loss(logits.data, target.data)
         self.log("val/loss", loss, batch_size=target.batch_sizes[0])
+        self.val_token_acc(logits.data, target.data)
+        self.log("val/token_acc", self.val_token_acc)
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         """Uptimizer for the network."""

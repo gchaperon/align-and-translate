@@ -38,6 +38,7 @@ class TrainerConfig:
     deterministic: bool = True
     max_epochs: int = 100
     max_steps: int = -1
+    val_check_interval: int = 1000
 
 
 @dataclasses.dataclass
@@ -45,6 +46,9 @@ class TrainingConfig:
     """Config class for training related params."""
 
     seed: int = 1234
+    # NOTE: uses iso-8601 durations:
+    # https://en.wikipedia.org/wiki/ISO_8601#Durations
+    checkpoint_time_interval: str = "PT1M"
     trainer: TrainerConfig = dataclasses.field(default_factory=TrainerConfig)
 
 
@@ -116,6 +120,16 @@ def train(
     trainer = pl.Trainer(  # type: ignore[arg-type]
         accelerator="gpu",
         devices=1,
+        callbacks=[
+            pl.callbacks.ModelCheckpoint(
+                monitor="val/loss",
+                mode="min",
+                every_n_train_steps=settings.training.trainer.val_check_interval + 1,
+            ),
+        ],
+        logger=pl.loggers.TensorBoardLogger(
+            save_dir="logs", name="", default_hp_metric=False
+        ),
         **settings.training.trainer,
     )
     trainer.fit(model, datamodule)

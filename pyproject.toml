@@ -13,7 +13,7 @@ dev = ["ipython", "pre-commit", "pip-tools", "align-and-translate[test,types,pre
 # pre-commit requirements should be syncd with the versions in
 # .pre-commit-config.yaml
 pre-commit = ["black==23.3.0", "isort==5.12.0", "ruff==0.0.270"]
-test = ["pytest>=6", "coverage", "hypothesis", "align-and-translate[train]"]
+test = ["pytest>=6", "pytest-cov", "hypothesis", "align-and-translate[train]"]
 train = ["dvc[ssh]<3", "datasets", "sentencepiece", "typer", "tensorboard", "typing_extensions"]
 types = [
   "mypy",
@@ -42,6 +42,9 @@ types = [
 line-length = 88
 target-version = ["py310"]
 
+[tool.coverage.html]
+show_contexts = true
+
 [tool.isort]
 profile = "black"
 
@@ -61,7 +64,7 @@ show_error_codes = true
 strict = true
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules"
+addopts = "--doctest-modules --cov=src --cov-context=test"
 minversion = "6.0"
 testpaths = [
   "src",

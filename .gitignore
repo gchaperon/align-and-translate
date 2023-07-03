@@ -14,7 +14,7 @@ build/
 
 # editor stuff
 .vimrc
-/tags
+/tags*
 
 # data stuff
 /data/**/*.lock

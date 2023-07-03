@@ -43,8 +43,70 @@ jobs:
         uses: actions/cache@v3
         with:
           path: .tox/
-          key: tox-testenv-py${{ matrix.python-version}}|${{ runner.os }}|${{ env.pythonLocation }}|${{ hashFiles('tox.ini', 'requirements/all.txt') }}
+          key: tox-testenv-py${{ matrix.python-version}}|${{ runner.os }}|${{ env.pythonLocation }}|${{ hashFiles('tox.ini', 'requirements/*.txt') }}
       - name: Install tox
         run: pip install tox tox-gh-actions
       - name: Run tests
         run: tox
+      - name: Get tox configs
+        id: coverage-location
+        run: |
+          TOXENV=$(python - <<EOF
+          from configparser import ConfigParser
+          config = ConfigParser()
+          config.read("tox.ini")
+          it = (part.strip() for line in config["gh-actions"]["python"].strip().split("\n") for part in line.split(":"))
+          print(dict(zip(it, it))['${{ matrix.python-version }}'])
+          EOF
+          )
+          echo $TOXENV
+          tox config -e ${TOXENV} -k set_env | grep COVERAGE_FILE | awk -F "=" '{print "location="$2}' >> "$GITHUB_OUTPUT"
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-${{ runner.os }}-py${{ matrix.python-version }}
+          path: ${{ steps.coverage-location.outputs.location }}
+  coverage:
+    needs: [test]
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - uses: actions/download-artifact@v3
+      - name: Display structure of downloaded files
+        run: ls -aRl
+      - name: Install coverage
+        run: pip install coverage[toml]
+      - name: Combine coverage
+        run: coverage combine coverage-*/.coverage
+      - name: Comment on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment $PULL_REQUEST -F- <<EOF
+          ### Coverage report
+          \`\`\`
+          $(coverage report)
+          \`\`\`
+          EOF
+      - name: Produce htmlcov
+        run: coverage html
+      - name: Upload htmlcov
+        uses: actions/upload-artifact@v3
+        with:
+          name: htmlcov
+          path: htmlcov
+            # - name: Decide if coverage is sufficient
+            #   env:
+            #     COVERAGE_THRESHOLD: 80
+            #   run: |
+            #     coverage report --fail-under $COVERAGE_THRESHOLD
